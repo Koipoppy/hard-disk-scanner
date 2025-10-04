@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫盘大王 - 硬盘空间分析工具</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    
+    <!-- 配置Tailwind颜色和字体 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                        danger: '#ef4444',
+                        dark: '#1f2937',
+                        light: '#f3f4f6',
+                        // 夜间模式专用颜色
+                        'dark-bg': '#0f172a',
+                        'dark-surface': '#1e293b',
+                        'dark-surface-hover': '#334155',
+                        'dark-text': '#e2e8f0',
+                        'dark-text-secondary': '#94a3b8',
+                        'dark-border': '#334155',
+                        'dark-primary': '#60a5fa',
+                        'dark-secondary': '#34d399',
+                        'dark-accent': '#fbbf24',
+                        'dark-danger': '#f87171'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            }
+            .btn-primary {
+                border: 2px solid #3b82f6;
+            }
+            .btn-primary:hover {
+                border-color: #2563eb;
+            }
+            .btn-danger {
+                border: 2px solid #ef4444;
+            }
+            .btn-danger:hover {
+                border-color: #dc2626;
+            }
+            .dark-mode {
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                color: #e2e8f0;
+            }
+            .dark-mode .glass-card {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+                box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+            }
+            .dark-mode .glass-card:hover {
+                background: rgba(30, 41, 59, 0.8);
+                border: 1px solid rgba(71, 85, 105, 0.5);
+            }
+            .dark-mode .nav-glass {
+                background: rgba(15, 23, 42, 0.9);
+                backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+            }
+            .dark-mode .text-glow {
+                text-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+            }
+            .dark-mode .progress-glow {
+                box-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
+            }
+            .dark-mode .chart-container {
+                background: rgba(30, 41, 59, 0.5);
+                border-radius: 12px;
+                padding: 1rem;
+            }
+            .dark-mode .table-row:hover {
+                background: rgba(51, 65, 85, 0.4);
+            }
+            .dark-mode .form-input {
+                background: rgba(30, 41, 59, 0.7);
+                border: 1px solid rgba(51, 65, 85, 0.5);
+                color: #e2e8f0;
+            }
+            .dark-mode .form-input:focus {
+                border-color: #60a5fa;
+                box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+            }
+            .dark-mode .form-input::placeholder {
+                color: #64748b;
+            }
+            .dark-mode .btn-primary {
+                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            }
+            .dark-mode .btn-primary:hover {
+                background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+                box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            }
+            .dark-mode .btn-danger {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            }
+            .dark-mode .btn-danger:hover {
+                background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+                box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            }
+            .dark-mode .legend-item {
+                background: rgba(30, 41, 59, 0.6);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+            }
+            .dark-mode .legend-item:hover {
+                background: rgba(51, 65, 85, 0.6);
+                border-color: rgba(71, 85, 105, 0.5);
+            }
+            .dark-mode .modal-backdrop {
+                background: rgba(0, 0, 0, 0.7);
+            }
+            .dark-mode .modal-content {
+                background: rgba(30, 41, 59, 0.95);
+                border: 1px solid rgba(51, 65, 85, 0.5);
+                box-shadow: 0 25px 50px rgba(2, 8, 20, 0.5);
+            }
+            .dark-mode .status-indicator {
+                background: rgba(30, 41, 59, 0.7);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+            }
+            .dark-mode .status-indicator.active {
+                background: rgba(16, 185, 129, 0.2);
+                border-color: rgba(52, 211, 153, 0.5);
+                box-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+            }
+            .dark-mode .status-indicator.error {
+                background: rgba(239, 68, 68, 0.2);
+                border-color: rgba(248, 113, 113, 0.5);
+                box-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
+            }
+            .dark-mode .breadcrumb {
+                background: rgba(30, 41, 59, 0.6);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+            }
+            .dark-mode .breadcrumb-item:hover {
+                background: rgba(51, 65, 85, 0.4);
+            }
+            .dark-mode .skeleton {
+                background: linear-gradient(90deg, rgba(30, 41, 59, 0.5) 25%, rgba(51, 65, 85, 0.5) 50%, rgba(30, 41, 59, 0.5) 75%);
+                background-size: 200% 100%;
+                animation: skeleton-loading 1.5s infinite;
+            }
+            @keyframes skeleton-loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+            .dark-mode .pulse-animation {
+                animation: pulse-glow 2s infinite;
+            }
+            @keyframes pulse-glow {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; box-shadow: 0 0 20px rgba(96, 165, 250, 0.4); }
+            }
+            /* 白天模式样式修复 */
+            body:not(.dark-mode) {
+                background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+                color: #1f2937;
+            }
+            body:not(.dark-mode) .glass-card {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(226, 232, 240, 0.5);
+            }
+            body:not(.dark-mode) .glass-chart-container {
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(226, 232, 240, 0.5);
+            }
+            /* 黑夜模式样式修复 */
+            body.dark-mode .glass-card {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+                box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+            }
+            body.dark-mode .glass-chart-container {
+                background: rgba(30, 41, 59, 0.7);
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(51, 65, 85, 0.3);
+                box-shadow: 0 8px 32px rgba(2, 8, 20, 0.4);
+            }
+            /* 白天模式表单元素样式 */
+            body:not(.dark-mode) select,
+            body:not(.dark-mode) input[type="text"],
+            body:not(.dark-mode) input[type="number"] {
+                background-color: #ffffff;
+                color: #1f2937;
+                border: 1px solid #d1d5db;
+            }
+            body:not(.dark-mode) select:focus,
+            body:not(.dark-mode) input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+            body:not(.dark-mode) select option {
+                background-color: #ffffff;
+                color: #1f2937;
+            }
+            body:not(.dark-mode) .text-gray-600 {
+                color: #4b5563;
+            }
+            body:not(.dark-mode) .text-gray-700 {
+                color: #374151;
+            }
+            body:not(.dark-mode) .text-gray-400 {
+                color: #9ca3af;
+            }
+            body:not(.dark-mode) .text-gray-500 {
+                color: #6b7280;
+            }
+            /* Canvas图表阴影效果 */
+            .chart-container canvas {
+                filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+                transition: filter 0.3s ease;
+            }
+            .dark-mode .chart-container canvas {
+                filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+            }
+            .chart-container canvas:hover {
+                filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+            }
+            .dark-mode .chart-container canvas:hover {
+                filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-light to-white min-h-screen font-sans text-dark transition-colors duration-300">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-md sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa fa-hdd-o text-2xl text-primary transition-colors duration-300"></i>
+                <h1 class="text-[clamp(1.25rem,3vw,1.75rem)] font-bold text-dark transition-colors duration-300 text-shadow">扫盘大王</h1>
+            </div>
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#" class="text-dark hover:text-primary transition-colors duration-300">主页</a>
+            </div>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-surface-hover transition-all duration-300 group">
+                <i class="fa fa-moon-o text-dark group-hover:text-primary transition-colors duration-300"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 扫描设置区域 -->
+        <section class="mb-10 bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:shadow-xl card-hover glass-card">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+                <h2 class="text-[clamp(1.1rem,2vw,1.5rem)] font-semibold text-dark mb-4 md:mb-0 text-shadow">扫描设置</h2>
+                <div class="flex items-center space-x-2">
+                    <i class="fa fa-info-circle text-primary transition-colors duration-300"></i>
+                    <span class="text-sm text-gray-600 dark:text-dark-text-secondary transition-colors duration-300">选择目标硬盘进行扫描分析</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- 驱动器选择 -->
+                <div class="col-span-1">
+                    <label for="drive-select" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2 transition-colors duration-300">选择驱动器</label>
+                    <div class="relative">
+                        <select id="drive-select" class="block w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-dark-surface border border-gray-300 dark:border-dark-border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 form-input">
+                            <option value="">正在加载驱动器...</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa fa-server text-gray-400 dark:text-dark-text-secondary transition-colors duration-300"></i>
+                        </div>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="fa fa-chevron-down text-gray-400 dark:text-dark-text-secondary transition-colors duration-300"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文件夹路径输入 -->
+                <div class="col-span-1">
+                    <label for="folder-path" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2 transition-colors duration-300">或指定文件夹</label>
+                    <div class="relative">
+                        <input type="text" id="folder-path" placeholder="如: C:\Users\Documents" class="block w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-dark-surface border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 form-input">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa fa-folder text-gray-400 dark:text-dark-text-secondary transition-colors duration-300"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 扫描深度 -->
+                <div class="col-span-1">
+                    <label for="scan-depth" class="block text-sm font-medium text-gray-700 dark:text-dark-text-secondary mb-2 transition-colors duration-300">扫描深度</label>
+                    <div class="relative">
+                        <input type="number" id="scan-depth" class="block w-full pl-10 pr-12 py-3 bg-gray-50 dark:bg-dark-surface border border-gray-300 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-300 form-input" min="1" max="50" value="10" placeholder="输入扫描深度">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa fa-search-plus text-gray-400 dark:text-dark-text-secondary transition-colors duration-300"></i>
+                        </div>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 text-xs text-gray-400 dark:text-dark-text-secondary transition-colors duration-300">
+                            层
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-dark-text-secondary mt-1 transition-colors duration-300">数字越大扫描越深入，1=仅当前文件夹，10=深入10层子文件夹</p>
+                </div>
+                
+                <!-- 扫描按钮组 -->
+                <div class="col-span-1 flex items-end space-x-3">
+                    <button id="scan-button" class="flex-1 bg-primary hover:bg-primary/90 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 group btn-primary border-2 border-primary hover:border-primary/80">
+                        <i class="fa fa-play-circle-o group-hover:scale-110 transition-transform duration-300"></i>
+                        <span>开始扫描</span>
+                    </button>
+                    <button id="stop-button" class="bg-danger hover:bg-danger/90 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 group btn-danger hidden border-2 border-danger hover:border-danger/80">
+                        <i class="fa fa-stop-circle-o group-hover:scale-110 transition-transform duration-300"></i>
+                        <span>停止扫描</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 扫描进度 -->
+            <div id="scan-progress-container" class="mt-6 hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-dark-text-secondary transition-colors duration-300" id="scan-status-text">准备扫描...</span>
+                    <span class="text-sm font-medium text-primary dark:text-dark-primary transition-colors duration-300 text-glow" id="scan-percentage">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-dark-border rounded-full h-2.5 transition-colors duration-300">
+                    <div id="scan-progress-bar" class="bg-primary dark:bg-dark-primary h-2.5 rounded-full transition-all duration-300 progress-glow" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-gray-500 dark:text-dark-text-secondary mt-2 transition-colors duration-300">
+                    <span id="scanned-files-info">已扫描: 0 个文件</span>
+                    <span id="scanned-size-info">已扫描: 0 B</span>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 饼图展示区域 -->
+        <section id="charts-section" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+            <!-- 程序占用空间饼图 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover opacity-50 glass-chart-container" id="apps-chart-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-dark dark:text-dark-text flex items-center transition-colors duration-300">
+                        <i class="fa fa-pie-chart text-primary dark:text-dark-primary mr-2 transition-colors duration-300"></i>
+                        程序占用空间
+                    </h3>
+                    <div class="text-xs text-gray-500 dark:text-dark-text-secondary transition-colors duration-300" id="apps-total-size">0 B</div>
+                </div>
+                <div class="relative h-64 chart-container">
+                    <canvas id="apps-chart"></canvas>
+                </div>
+                <div class="mt-4 max-h-40 overflow-y-auto" id="apps-legend-container">
+                    <div class="text-center text-gray-500 dark:text-dark-text-secondary text-sm transition-colors duration-300" id="apps-placeholder">扫描完成后显示数据</div>
+                </div>
+            </div>
+            
+            <!-- 文件类型分布饼图 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover opacity-50 glass-chart-container" id="types-chart-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-dark dark:text-dark-text flex items-center transition-colors duration-300">
+                        <i class="fa fa-files-o text-secondary dark:text-dark-secondary mr-2 transition-colors duration-300"></i>
+                        文件类型分布
+                    </h3>
+                    <div class="text-xs text-gray-500 dark:text-dark-text-secondary transition-colors duration-300" id="types-total-count">0 个文件</div>
+                </div>
+                <div class="relative h-64 chart-container">
+                    <canvas id="types-chart"></canvas>
+                </div>
+                <div class="mt-4 max-h-40 overflow-y-auto" id="types-legend-container">
+                    <div class="text-center text-gray-500 dark:text-dark-text-secondary text-sm transition-colors duration-300" id="types-placeholder">扫描完成后显示数据</div>
+                </div>
+            </div>
+            
+            <!-- 文件夹占用空间饼图 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover opacity-50 glass-chart-container" id="folders-chart-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-dark dark:text-dark-text flex items-center transition-colors duration-300">
+                        <i class="fa fa-folder-open text-accent dark:text-dark-accent mr-2 transition-colors duration-300"></i>
+                        文件夹占用空间
+                    </h3>
+                    <div class="text-xs text-gray-500 dark:text-dark-text-secondary transition-colors duration-300" id="folders-total-size">0 B</div>
+                </div>
+                <div class="relative h-64 chart-container">
+                    <canvas id="folders-chart"></canvas>
+                </div>
+                <div class="mt-4 max-h-40 overflow-y-auto" id="folders-legend-container">
+                    <div class="text-center text-gray-500 dark:text-dark-text-secondary text-sm transition-colors duration-300" id="folders-placeholder">扫描完成后显示数据</div>
+                </div>
+            </div>
+
+            <!-- 代码语言分类饼图 -->
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover opacity-50 glass-chart-container" id="code-lang-chart-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-dark dark:text-dark-text flex items-center transition-colors duration-300">
+                        <i class="fa fa-code text-purple-500 dark:text-purple-400 mr-2 transition-colors duration-300"></i>
+                        编程语言分布
+                    </h3>
+                    <div class="text-xs text-gray-500 dark:text-dark-text-secondary transition-colors duration-300" id="code-lang-total-size">0 B</div>
+                </div>
+                <div class="relative h-64 chart-container">
+                    <canvas id="code-lang-chart"></canvas>
+                </div>
+                <div class="mt-4 max-h-40 overflow-y-auto" id="code-lang-legend-container">
+                    <div class="text-center text-gray-500 dark:text-dark-text-secondary text-sm transition-colors duration-300" id="code-lang-placeholder">扫描完成后显示数据</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 详细信息表格 -->
+        <section id="details-section" class="bg-white rounded-xl shadow-lg p-6 mb-10 opacity-50">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                <h2 class="text-[clamp(1.1rem,2vw,1.5rem)] font-semibold text-dark flex items-center">
+                    <i class="fa fa-table text-primary mr-2"></i>
+                    详细数据视图
+                </h2>
+                
+                <div class="flex flex-wrap gap-4 mt-4 md:mt-0">
+                    <!-- 数据类型选择 -->
+                    <div class="relative">
+                        <select id="data-view-select" class="pl-10 pr-12 py-2 border border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <option value="fileTypes">文件类型</option>
+                            <option value="folders">文件夹</option>
+                            <option value="applications">应用程序</option>
+                        </select>
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fa fa-filter text-gray-400"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- 搜索框 -->
+                    <div class="relative">
+                        <input type="text" id="search-data" placeholder="搜索..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- 排序选项 -->
+                    <select id="sort-option" class="pl-4 pr-8 py-2 border border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-white">
+                        <option value="size-desc">按大小排序（大→小）</option>
+                        <option value="size-asc">按大小排序（小→大）</option>
+                        <option value="name-asc">按名称排序（A→Z）</option>
+                        <option value="name-desc">按名称排序（Z→A）</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr id="table-header">
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">大小</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">占比</th>
+                            <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">文件数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                                <i class="fa fa-hdd-o text-4xl mb-3 block opacity-30"></i>
+                                <p>扫描完成后显示数据</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页控制 -->
+            <div class="flex justify-between items-center mt-6" id="pagination-controls">
+                <div class="text-sm text-gray-600">显示 <span id="start-item">0</span>-<span id="end-item">0</span> 项，共 <span id="total-items">0</span> 项</div>
+                <div class="flex space-x-2">
+                    <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <button id="next-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa fa-hdd-o text-primary"></i>
+                        <span class="font-semibold">扫盘大王</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">高效分析硬盘空间使用情况</p>
+                </div>
+                <div class="flex space-x-6">
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-question-circle-o"></i>
+                        <span class="ml-1">帮助</span>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-github"></i>
+                        <span class="ml-1">GitHub</span>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fa fa-envelope-o"></i>
+                        <span class="ml-1">联系我们</span>
+                    </a>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-6 pt-6 text-center text-sm text-gray-500">
+                &copy; 2025 扫盘大王 | 所有权利保留
+            </div>
+        </div>
+    </footer>
+
+    <!-- 脚本部分 -->
+    <script>
+        // 全局变量
+        let ws = null;
+        let currentTaskId = null;
+        let scanResults = null;
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        let appsChart = null;
+        let typesChart = null;
+        let foldersChart = null;
+        let codeLangChart = null;
+        let currentViewType = 'fileTypes';
+        
+        // DOM 元素引用
+        const driveSelect = document.getElementById('drive-select');
+        const scanButton = document.getElementById('scan-button');
+        const stopButton = document.getElementById('stop-button');
+        const scanProgressContainer = document.getElementById('scan-progress-container');
+        const scanProgressBar = document.getElementById('scan-progress-bar');
+        const scanStatusText = document.getElementById('scan-status-text');
+        const scanPercentage = document.getElementById('scan-percentage');
+        const scannedFilesInfo = document.getElementById('scanned-files-info');
+        const scannedSizeInfo = document.getElementById('scanned-size-info');
+        const dataViewSelect = document.getElementById('data-view-select');
+        const searchData = document.getElementById('search-data');
+        const sortOption = document.getElementById('sort-option');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const startItem = document.getElementById('start-item');
+        const endItem = document.getElementById('end-item');
+        const totalItems = document.getElementById('total-items');
+        const themeToggle = document.getElementById('theme-toggle');
+        const dataTableBody = document.getElementById('data-table-body');
+        
+        // 初始化函数
+        function init() {
+            console.log('开始初始化应用...');
+            
+            // 加载保存的主题偏好
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+                document.body.classList.remove('bg-gradient-to-br', 'from-light', 'to-white');
+                document.querySelector('header').classList.add('nav-glass');
+                document.querySelectorAll('#apps-chart-card, #types-chart-card, #folders-chart-card').forEach(el => {
+                    el.classList.add('glass-card');
+                });
+                document.querySelectorAll('#scan-button').forEach(el => {
+                    el.classList.add('btn-primary');
+                });
+                document.querySelectorAll('#stop-button').forEach(el => {
+                    el.classList.add('btn-danger');
+                });
+                document.querySelector('#scan-progress-bar').classList.add('progress-glow');
+                document.querySelector('#scan-percentage').classList.add('text-glow');
+                themeToggle.innerHTML = '<i class="fa fa-sun-o text-yellow-400 text-xl pulse-animation"></i>';
+            }
+            
+            // 设置默认扫描深度为10
+                const scanDepthInput = document.getElementById('scan-depth');
+                if (scanDepthInput && (scanDepthInput.value === '' || scanDepthInput.value === '2')) {
+                    scanDepthInput.value = '10';
+                }
+            
+            // 添加扫描统计信息元素
+            if (!document.getElementById('scan-stats-info')) {
+                const statsContainer = document.createElement('div');
+                statsContainer.id = 'scan-stats-info';
+                statsContainer.className = 'mt-4 p-4 bg-info/10 rounded-lg text-sm hidden';
+                statsContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 1000; background: rgba(240, 249, 255, 0.9); border: 1px solid #3b82f6;';
+                document.body.appendChild(statsContainer);
+            }
+            
+            // 加载系统驱动器
+            loadDrives().catch(error => {
+                console.error('加载驱动器失败:', error);
+                // 添加模拟驱动器以便测试
+                driveSelect.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'C:';
+                defaultOption.textContent = 'C: 本地磁盘 (模拟)';
+                driveSelect.appendChild(defaultOption);
+                alert('无法加载真实驱动器列表，已添加模拟C盘用于测试');
+            });
+            
+            // 初始化WebSocket连接
+            initWebSocket();
+            
+            // 初始化图表
+            try {
+                initCharts();
+                console.log('图表初始化完成');
+            } catch (error) {
+                console.error('图表初始化失败:', error);
+            }
+            
+            // 绑定事件监听器
+            scanButton.addEventListener('click', startScan);
+            stopButton.addEventListener('click', stopScan);
+            dataViewSelect.addEventListener('change', changeDataView);
+            searchData.addEventListener('input', filterAndSortData);
+            sortOption.addEventListener('change', filterAndSortData);
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+            themeToggle.addEventListener('click', toggleTheme);
+            
+            // 添加文件夹路径输入框的智能交互
+            const folderPathInput = document.getElementById('folder-path');
+            folderPathInput.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    // 如果输入了文件夹路径，清空驱动器选择
+                    driveSelect.value = '';
+                }
+            });
+            
+            // 添加驱动器选择框的智能交互
+            driveSelect.addEventListener('change', function() {
+                if (this.value) {
+                    // 如果选择了驱动器，清空文件夹路径输入
+                    folderPathInput.value = '';
+                }
+            });
+            
+            console.log('初始化完成');
+        }
+        
+        // 加载系统驱动器
+        async function loadDrives() {
+            try {
+                const response = await fetch('/api/drives');
+                if (!response.ok) {
+                    throw new Error('获取驱动器列表失败');
+                }
+                const drives = await response.json();
+                
+                // 清空并填充驱动器选择框
+                driveSelect.innerHTML = '';
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = '请选择一个驱动器...';
+                driveSelect.appendChild(defaultOption);
+                
+                drives.forEach(drive => {
+                    const option = document.createElement('option');
+                    option.value = drive.name;
+                    option.textContent = `${drive.name} 本地磁盘`;
+                    driveSelect.appendChild(option);
+                });
+                
+                // 添加自定义路径选项
+                const customOption = document.createElement('option');
+                customOption.value = 'custom';
+                customOption.textContent = '📁 自定义文件夹路径';
+                driveSelect.appendChild(customOption);
+            } catch (error) {
+                console.error('加载驱动器失败:', error);
+                driveSelect.innerHTML = '';
+                const errorOption = document.createElement('option');
+                errorOption.value = '';
+                errorOption.textContent = '无法加载驱动器列表';
+                driveSelect.appendChild(errorOption);
+                alert('无法加载驱动器列表: ' + error.message);
+            }
+        }
+        
+        // 初始化WebSocket连接
+        function initWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}`;
+            
+            console.log('正在连接WebSocket:', wsUrl);
+            
+            // 重置之前的连接
+            if (ws) {
+                ws.close();
+            }
+            
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = 'blob';
+            
+            ws.onopen = () => {
+                console.log('WebSocket连接已建立');
+                // 显示连接成功提示
+                const statusText = document.getElementById('scan-status-text');
+                if (statusText && !scanProgressContainer.classList.contains('hidden')) {
+                    statusText.textContent = 'WebSocket连接已建立';
+                }
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    console.log('接收到WebSocket消息:', event.data);
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('解析WebSocket消息失败:', error);
+                    console.error('原始消息:', event.data);
+                }
+            };
+            
+            ws.onclose = (event) => {
+                console.log('WebSocket连接已关闭', event.code, event.reason);
+                // 显示连接关闭提示
+                const statusText = document.getElementById('scan-status-text');
+                if (statusText && !scanProgressContainer.classList.contains('hidden')) {
+                    statusText.textContent = 'WebSocket连接已断开';
+                }
+                // 尝试重新连接
+                setTimeout(() => {
+                    console.log('尝试重新连接WebSocket...');
+                    initWebSocket();
+                }, 5000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+                // 显示错误提示
+                const statusText = document.getElementById('scan-status-text');
+                if (statusText && !scanProgressContainer.classList.contains('hidden')) {
+                    statusText.textContent = 'WebSocket连接错误';
+                }
+            };
+        }
+        
+        // 处理WebSocket消息
+        function handleWebSocketMessage(data) {
+            console.log('处理WebSocket消息:', JSON.stringify(data));
+            
+            // 处理可能的字符串消息
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) {
+                    console.error('无法解析消息:', data);
+                    return;
+                }
+            }
+            
+            // 验证消息格式
+            if (!data || typeof data.type !== 'string') {
+                console.error('无效的消息格式:', data);
+                return;
+            }
+            
+            switch (data.type) {
+                case 'scan_started':
+                    console.log('扫描开始:', data.payload);
+                    if (data.payload && data.payload.taskId) {
+                        currentTaskId = data.payload.taskId;
+                        updateUIForScanStart();
+                    } else {
+                        console.error('无效的扫描开始消息，缺少taskId');
+                        currentTaskId = 'default-task'; // 设置默认任务ID
+                        updateUIForScanStart();
+                    }
+                    break;
+                case 'scan_progress':
+                    console.log('扫描进度:', data.payload);
+                    if (data.payload) {
+                        updateScanProgress(data.payload);
+                    } else {
+                        console.error('无效的扫描进度消息');
+                    }
+                    break;
+                case 'scan_complete':
+                    console.log('扫描完成，原始结果:', JSON.stringify(data.payload));
+                    if (data.payload) {
+                        // 兼容可能的直接返回格式
+                        scanResults = data.payload.stats || data.payload;
+                        console.log('处理后的扫描结果:', scanResults);
+                        updateUIForScanComplete();
+                    } else {
+                        console.error('无效的扫描完成消息');
+                        // 显示错误并重置UI
+                        updateUIForScanError('扫描完成但未返回数据');
+                    }
+                    break;
+                case 'scan_stopped':
+                    updateUIForScanStopped();
+                    break;
+                case 'scan_error':
+                    const errorMessage = data.payload && data.payload.error ? data.payload.error : '未知错误';
+                    updateUIForScanError(errorMessage);
+                    break;
+                default:
+                    console.log('未知消息类型:', data.type);
+            }
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            const appsCtx = document.getElementById('apps-chart').getContext('2d');
+            const typesCtx = document.getElementById('types-chart').getContext('2d');
+            const foldersCtx = document.getElementById('folders-chart').getContext('2d');
+            const codeLangCtx = document.getElementById('code-lang-chart').getContext('2d');
+            
+            // 图表通用配置
+            const chartConfig = {
+                type: 'doughnut',
+                data: {
+                    labels: ['准备扫描'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: ['#3b82f6'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            bodyFont: {
+                                size: 12
+                            },
+                            callbacks: {
+                                label: function(context) {
+                                    return '请选择驱动器并开始扫描';
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            try {
+                // 创建图表实例
+                appsChart = new Chart(appsCtx, { ...chartConfig });
+                typesChart = new Chart(typesCtx, { ...chartConfig });
+                foldersChart = new Chart(foldersCtx, { ...chartConfig });
+                codeLangChart = new Chart(codeLangCtx, { ...chartConfig });
+                console.log('图表初始化成功');
+            } catch (error) {
+                console.error('图表初始化失败:', error);
+            }
+        }
+        
+        // 开始扫描
+        function startScan() {
+            const drive = driveSelect.value;
+            const folderPath = document.getElementById('folder-path').value;
+            let scanDepth = parseInt(document.getElementById('scan-depth').value);
+            
+            // 验证输入：必须选择驱动器或输入文件夹路径
+            if (!drive && !folderPath) {
+                alert('请选择一个驱动器或输入文件夹路径');
+                return;
+            }
+            
+            // 如果输入了文件夹路径，优先使用文件夹路径
+            if (folderPath) {
+                // 验证文件夹路径格式
+                if (!folderPath.match(/^[a-zA-Z]:[\\\/].*/)) {
+                    alert('文件夹路径格式不正确，请输入如: C:\\Users\\Documents');
+                    return;
+                }
+            }
+            
+            // 设置更合理的默认扫描深度
+                if (isNaN(scanDepth) || scanDepth < 1) {
+                    scanDepth = 10;
+                    document.getElementById('scan-depth').value = scanDepth;
+                    console.log('使用默认扫描深度:', scanDepth);
+                }
+            
+            // 检查WebSocket连接状态
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket连接未建立:', ws ? ws.readyState : '未初始化');
+                // 尝试重新连接
+                initWebSocket();
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        console.log('连接建立后重试扫描');
+                        doStartScan(drive, scanDepth);
+                    } else {
+                        alert('WebSocket连接失败，请刷新页面重试');
+                    }
+                }, 2000);
+                return;
+            }
+            
+            doStartScan(drive, scanDepth);
+        }
+        
+        function doStartScan(drive, scanDepth) {
+            const folderPath = document.getElementById('folder-path').value;
+            console.log('开始扫描 - 驱动器:', drive, '文件夹路径:', folderPath, '深度:', scanDepth);
+            
+            // 清空之前的扫描结果
+            scanResults = null;
+            
+            // 根据用户选择确定扫描路径
+            let scanPath;
+            if (folderPath) {
+                // 使用用户输入的文件夹路径
+                scanPath = folderPath;
+            } else if (drive === 'custom') {
+                // 自定义路径模式 - 使用文件夹选择器（向后兼容）
+                const customPath = prompt('请输入要扫描的文件夹路径:');
+                if (!customPath) {
+                    alert('未输入路径，取消扫描');
+                    return;
+                }
+                scanPath = customPath;
+            } else {
+                // 驱动器模式 - 确保是完整路径格式
+                if (drive.length === 2 && drive.endsWith(':')) {
+                    // 如果是C:这样的格式，转换为C:\
+                    scanPath = drive + '\\';
+                } else {
+                    scanPath = drive;
+                }
+            }
+            
+            console.log('扫描路径:', scanPath);
+            
+            // 发送扫描请求
+            const scanRequest = {
+                type: 'start_scan',
+                payload: {
+                    drivePath: scanPath,
+                    scanDepth
+                }
+            };
+            
+            console.log('发送扫描请求:', scanRequest);
+            try {
+                ws.send(JSON.stringify(scanRequest));
+            } catch (error) {
+                console.error('发送扫描请求失败:', error);
+                alert('发送扫描请求失败: ' + error.message);
+            }
+        }
+        
+        // 停止扫描
+        function stopScan() {
+            if (!currentTaskId || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+            
+            ws.send(JSON.stringify({
+                type: 'stop_scan',
+                payload: {
+                    taskId: currentTaskId
+                }
+            }));
+        }
+        
+        // 更新扫描开始时的UI
+        function updateUIForScanStart() {
+            // 重置进度条
+            scanProgressBar.style.width = '0%';
+            scanStatusText.textContent = '开始扫描...';
+            scanPercentage.textContent = '0%';
+            scannedFilesInfo.textContent = '已扫描: 0 个文件';
+            scannedSizeInfo.textContent = '已扫描: 0 B';
+            
+            // 显示进度条，隐藏图表
+            scanProgressContainer.classList.remove('hidden');
+            
+            // 切换按钮状态
+            scanButton.classList.add('hidden');
+            stopButton.classList.remove('hidden');
+            
+            // 禁用驱动器选择
+            driveSelect.disabled = true;
+            
+            // 禁用图表和详情区域
+            const cards = document.querySelectorAll('#apps-chart-card, #types-chart-card, #folders-chart-card, #code-lang-chart-card, #details-section');
+            cards.forEach(card => {
+                card.classList.add('opacity-50');
+            });
+        }
+        
+        // 更新扫描进度
+        function updateScanProgress(progress) {
+            const { scannedCount, totalSize, errorCount } = progress;
+            
+            // 估算进度百分比（由于不知道总文件数，这里只是一个参考值）
+            // 在实际应用中，后端可以提供更准确的进度信息
+            const estimatedPercent = Math.min(95, Math.floor(scannedCount / 100));
+            
+            scanProgressBar.style.width = estimatedPercent + '%';
+            scanPercentage.textContent = estimatedPercent + '%';
+            scannedFilesInfo.textContent = `已扫描: ${scannedCount.toLocaleString()} 个文件`;
+            scannedSizeInfo.textContent = `已扫描: ${formatBytes(totalSize)}`;
+            
+            if (errorCount > 0) {
+                scanStatusText.textContent = `扫描中... (${errorCount} 个文件访问失败)`;
+            } else {
+                scanStatusText.textContent = '扫描中...';
+            }
+        }
+        
+        // 更新扫描完成时的UI
+        function updateUIForScanComplete() {
+            console.log('扫描完成，处理结果:', JSON.stringify(scanResults));
+            
+            // 更新UI状态
+            scanProgressBar.style.width = '100%';
+            scanPercentage.textContent = '100%';
+            scanStatusText.textContent = '扫描完成';
+            
+            // 切换按钮状态
+            scanButton.classList.remove('hidden');
+            stopButton.classList.add('hidden');
+            
+            // 启用驱动器选择
+            driveSelect.disabled = false;
+            
+            // 验证扫描结果数据
+            if (!scanResults) {
+                console.error('扫描结果为空');
+                alert('扫描结果为空，请尝试重新扫描');
+                return;
+            }
+            
+            // 标准化扫描结果格式
+            normalizeScanResults();
+            
+            console.log('标准化后扫描结果:', {
+                fileTypesCount: scanResults.fileTypes.length,
+                foldersCount: scanResults.folders.length,
+                applicationsCount: scanResults.applications.length,
+                totalFiles: scanResults.totalFiles,
+                totalSize: scanResults.totalSize
+            });
+            
+            // 更新图表和数据表格
+            updateCharts();
+            updateDataTable();
+            
+            // 显示详细的扫描统计信息
+            showScanStatistics();
+            
+            // 启用图表和详情区域
+            const cards = document.querySelectorAll('#apps-chart-card, #types-chart-card, #folders-chart-card, #code-lang-chart-card, #details-section');
+            cards.forEach(card => {
+                card.classList.remove('opacity-50');
+            });
+            
+            // 显示扫描统计信息
+            alert(`扫描完成！\n发现文件数: ${scanResults.totalFiles || 0}\n总大小: ${formatBytes(scanResults.totalSize || 0)}\n错误数: ${scanResults.errorCount || 0}`);
+            
+            // 重置当前任务ID
+            currentTaskId = null;
+        }
+        
+        // 更新扫描停止时的UI
+        function updateUIForScanStopped() {
+            scanStatusText.textContent = '扫描已停止';
+            
+            // 切换按钮状态
+            scanButton.classList.remove('hidden');
+            stopButton.classList.add('hidden');
+            
+            // 启用驱动器选择
+            driveSelect.disabled = false;
+            
+            // 重置当前任务ID
+            currentTaskId = null;
+        }
+        
+        // 更新扫描错误时的UI
+        function updateUIForScanError(error) {
+            scanStatusText.textContent = `扫描出错: ${error}`;
+            
+            // 切换按钮状态
+            scanButton.classList.remove('hidden');
+            stopButton.classList.add('hidden');
+            
+            // 启用驱动器选择
+            driveSelect.disabled = false;
+            
+            // 重置当前任务ID
+            currentTaskId = null;
+            
+            alert('扫描过程中发生错误: ' + error);
+        }
+        
+        // 标准化扫描结果格式
+        function normalizeScanResults() {
+            // 确保必要的数组存在
+            if (!scanResults.fileTypes || !Array.isArray(scanResults.fileTypes)) {
+                scanResults.fileTypes = [];
+            }
+            if (!scanResults.folders || !Array.isArray(scanResults.folders)) {
+                scanResults.folders = [];
+            }
+            if (!scanResults.applications || !Array.isArray(scanResults.applications)) {
+                scanResults.applications = [];
+            }
+            
+            // 确保统计数据存在
+            if (typeof scanResults.totalFiles !== 'number') {
+                scanResults.totalFiles = 0;
+            }
+            if (typeof scanResults.totalSize !== 'number') {
+                scanResults.totalSize = 0;
+            }
+            if (typeof scanResults.errorCount !== 'number') {
+                scanResults.errorCount = 0;
+            }
+            
+            // 转换对象格式的数据为数组格式
+            if (scanResults.fileTypes && typeof scanResults.fileTypes === 'object' && !Array.isArray(scanResults.fileTypes)) {
+                scanResults.fileTypes = Object.entries(scanResults.fileTypes)
+                    .map(([key, value]) => ({
+                        name: key,
+                        size: value.size || value,
+                        count: value.count || 0
+                    }))
+                    .filter(item => item.size > 0)
+                    .sort((a, b) => b.size - a.size);
+            }
+            
+            // 确保每个项目都有必要的属性 - 修复文件类型显示
+            scanResults.fileTypes = scanResults.fileTypes.map(item => {
+                console.log('处理文件类型项:', item);
+                return {
+                    name: item.name || item.type || '未知类型',  // 优先使用name字段
+                    size: item.size || 0,
+                    count: item.count || 0,
+                    extension: item.extension || item.type || '',
+                    description: item.description || ''
+                };
+            });
+            
+            scanResults.folders = scanResults.folders.map(item => ({
+                name: item.name || '未知文件夹',
+                size: item.size || 0
+            }));
+            
+            scanResults.applications = scanResults.applications.map(item => ({
+                name: item.name || '未知应用',
+                size: item.size || 0
+            }));
+            
+            // 按大小排序
+            scanResults.fileTypes.sort((a, b) => b.size - a.size);
+            scanResults.folders.sort((a, b) => b.size - a.size);
+            scanResults.applications.sort((a, b) => b.size - a.size);
+            
+            // 过滤掉大小为0的项
+            scanResults.fileTypes = scanResults.fileTypes.filter(item => item.size > 0);
+            scanResults.folders = scanResults.folders.filter(item => item.size > 0);
+            scanResults.applications = scanResults.applications.filter(item => item.size > 0);
+            
+            // 生成编程语言分布数据
+            generateCodeLanguageData();
+        }
+        
+        // 生成编程语言分布数据
+        function generateCodeLanguageData() {
+            const codeLanguages = {
+                'JavaScript': { extensions: ['.js', '.jsx', '.mjs'], size: 0, count: 0 },
+                'TypeScript': { extensions: ['.ts', '.tsx'], size: 0, count: 0 },
+                'HTML': { extensions: ['.html', '.htm', '.xhtml'], size: 0, count: 0 },
+                'CSS': { extensions: ['.css', '.scss', '.sass', '.less'], size: 0, count: 0 },
+                'Python': { extensions: ['.py', '.pyw', '.pyx'], size: 0, count: 0 },
+                'Java': { extensions: ['.java'], size: 0, count: 0 },
+                'C/C++': { extensions: ['.c', '.cpp', '.cc', '.cxx', '.h', '.hpp'], size: 0, count: 0 },
+                'C#': { extensions: ['.cs'], size: 0, count: 0 },
+                'PHP': { extensions: ['.php', '.php3', '.php4', '.php5'], size: 0, count: 0 },
+                'Ruby': { extensions: ['.rb'], size: 0, count: 0 },
+                'Go': { extensions: ['.go'], size: 0, count: 0 },
+                'Rust': { extensions: ['.rs'], size: 0, count: 0 },
+                'Swift': { extensions: ['.swift'], size: 0, count: 0 },
+                'Kotlin': { extensions: ['.kt', '.kts'], size: 0, count: 0 },
+                'SQL': { extensions: ['.sql'], size: 0, count: 0 },
+                'Shell': { extensions: ['.sh', '.bash', '.zsh'], size: 0, count: 0 },
+                'XML': { extensions: ['.xml', '.xsl', '.xslt'], size: 0, count: 0 },
+                'JSON': { extensions: ['.json'], size: 0, count: 0 },
+                'Markdown': { extensions: ['.md', '.markdown'], size: 0, count: 0 },
+                '其他': { extensions: [], size: 0, count: 0 }
+            };
+            
+            // 统计代码文件
+            scanResults.fileTypes.forEach(fileType => {
+                const extension = fileType.extension || fileType.name || '';
+                let found = false;
+                
+                // 检查是否匹配已知编程语言
+                for (const [language, config] of Object.entries(codeLanguages)) {
+                    if (language !== '其他' && config.extensions.includes(extension.toLowerCase())) {
+                        config.size += fileType.size;
+                        config.count += fileType.count;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // 未匹配的文件归类到"其他"
+                if (!found && extension) {
+                    codeLanguages['其他'].size += fileType.size;
+                    codeLanguages['其他'].count += fileType.count;
+                }
+            });
+            
+            // 转换为数组格式并按大小排序
+            scanResults.codeLanguages = Object.entries(codeLanguages)
+                .filter(([_, data]) => data.size > 0)
+                .map(([name, data]) => ({
+                    name: name,
+                    size: data.size,
+                    count: data.count
+                }))
+                .sort((a, b) => b.size - a.size);
+        }
+        
+        // 显示扫描统计信息
+        function showScanStatistics() {
+            const stats = [
+                `文件总数: ${scanResults.totalFiles.toLocaleString()}`,
+                `总大小: ${formatBytes(scanResults.totalSize)}`,
+                `错误数: ${scanResults.errorCount}`,
+                `文件类型: ${scanResults.fileTypes.length} 种`,
+                `文件夹: ${scanResults.folders.length} 个`,
+                `应用程序: ${scanResults.applications.length} 个`
+            ];
+            
+            console.log('扫描统计:', stats.join('; '));
+            
+            // 显示统计信息，避免频繁弹窗
+            const statsElement = document.getElementById('scan-stats-info');
+            if (statsElement) {
+                statsElement.innerHTML = stats.join('<br>');
+                statsElement.classList.remove('hidden');
+            } else {
+                // 如果没有统计元素，使用alert
+                alert('扫描完成！\n' + stats.join('\n'));
+            }
+        }
+        
+        // 更新图表
+        function updateCharts() {
+            if (!scanResults) return;
+            
+            console.log('更新图表数据');
+            
+            // 1. 程序占用空间饼图数据
+            const applicationsData = scanResults.applications || [];
+            console.log('应用程序数据数量:', applicationsData.length);
+            updateChart(appsChart, applicationsData, 'apps', scanResults.totalSize || 0);
+            document.getElementById('apps-total-size').textContent = formatBytes(scanResults.totalSize || 0);
+            
+            // 2. 文件类型分布饼图数据
+            const fileTypesData = scanResults.fileTypes || [];
+            console.log('文件类型数据数量:', fileTypesData.length);
+            updateChart(typesChart, fileTypesData, 'types', scanResults.totalSize || 0);
+            document.getElementById('types-total-count').textContent = (scanResults.totalFiles || 0).toLocaleString() + ' 个文件';
+            
+            // 3. 文件夹占用空间饼图数据
+            const foldersData = scanResults.folders || [];
+            console.log('文件夹数据数量:', foldersData.length);
+            updateChart(foldersChart, foldersData, 'folders', scanResults.totalSize || 0);
+            document.getElementById('folders-total-size').textContent = formatBytes(scanResults.totalSize || 0);
+            
+            // 4. 编程语言分布饼图数据
+            const codeLangData = scanResults.codeLanguages || [];
+            console.log('编程语言数据数量:', codeLangData.length);
+            updateChart(codeLangChart, codeLangData, 'code-lang', scanResults.totalSize || 0);
+            const codeLangTotalSize = codeLangData.reduce((sum, item) => sum + item.size, 0);
+            document.getElementById('code-lang-total-size').textContent = formatBytes(codeLangTotalSize);
+            
+            // 更新图例
+            updateLegend('apps-legend-container', applicationsData, 'size', scanResults.totalSize || 0);
+            updateLegend('types-legend-container', fileTypesData, 'size', scanResults.totalSize || 0);
+            updateLegend('folders-legend-container', foldersData, 'size', scanResults.totalSize || 0);
+            updateLegend('code-lang-legend-container', codeLangData, 'size', codeLangTotalSize);
+        }
+        
+        // 更新单个图表
+        function updateChart(chart, data, type, totalSize) {
+            // 处理空数据情况
+            if (!data || data.length === 0) {
+                chart.data.labels = ['暂无数据'];
+                chart.data.datasets[0].data = [1];
+                chart.data.datasets[0].backgroundColor = ['#e5e7eb'];
+                chart.update();
+                return;
+            }
+            
+            // 生成颜色
+            const colors = generateColors(Math.min(data.length, 10)); // 限制颜色数量
+            
+            // 处理大量数据的情况，只显示前N个，其余合并为"其他"
+            const maxItems = 8;
+            let itemsToDisplay = data;
+            let otherValue = 0;
+            
+            if (data.length > maxItems) {
+                itemsToDisplay = data.slice(0, maxItems);
+                otherValue = data.slice(maxItems).reduce((sum, item) => sum + item.size, 0);
+            }
+            
+            // 准备图表数据
+            const labels = itemsToDisplay.map(item => item.name);
+            const values = itemsToDisplay.map(item => item.size);
+            
+            // 如果有"其他"类别，添加到数据中
+            if (otherValue > 0) {
+                labels.push('其他');
+                values.push(otherValue);
+            }
+            
+            // 更新图表数据
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = values;
+            chart.data.datasets[0].backgroundColor = generateColors(labels.length);
+            
+            // 更新tooltip根据图表类型显示不同格式
+            chart.options.plugins.tooltip.callbacks.label = function(context) {
+                let label = context.label || '';
+                let value = context.raw || 0;
+                let percentage = totalSize > 0 ? Math.round((value / totalSize) * 100) : 0;
+                
+                if (label) {
+                    label += ': ';
+                }
+                
+                return label + formatBytes(value) + ' (' + percentage + '%)';
+            };
+            
+            chart.update();
+        }
+        
+        // 生成颜色数组
+        function generateColors(count) {
+            const baseColors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+                '#8b5cf6', '#ec4899', '#14b8a6', '#f97316',
+                '#84cc16', '#6366f1'
+            ];
+            
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                colors.push(baseColors[i % baseColors.length]);
+            }
+            return colors;
+        }
+        
+        // 更新图例
+        function updateLegend(containerId, items, valueType, totalValue) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 text-sm">无数据</div>';
+                return;
+            }
+            
+            const colors = generateColors(Math.min(items.length, 10));
+            
+            // 限制显示的项数
+            const maxItems = 10;
+            const itemsToDisplay = items.slice(0, maxItems);
+            
+            itemsToDisplay.forEach((item, index) => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'flex items-center justify-between py-1 text-sm';
+                
+                const labelContainer = document.createElement('div');
+                labelContainer.className = 'flex items-center';
+                
+                const colorDot = document.createElement('span');
+                colorDot.className = 'w-3 h-3 rounded-full mr-2';
+                colorDot.style.backgroundColor = colors[index];
+                
+                const label = document.createElement('span');
+                label.textContent = item.name;
+                label.title = item.name; // 添加悬停提示
+                
+                const valueContainer = document.createElement('div');
+                valueContainer.className = 'text-right';
+                
+                const value = document.createElement('span');
+                value.className = 'font-medium';
+                value.textContent = formatBytes(item.size);
+                
+                const percentage = document.createElement('span');
+                percentage.className = 'text-xs text-gray-500 block';
+                percentage.textContent = totalValue > 0 ? 
+                    `(${Math.round((item.size / totalValue) * 100)}%)` : 
+                    '(0%)';
+                
+                valueContainer.appendChild(value);
+                valueContainer.appendChild(percentage);
+                labelContainer.appendChild(colorDot);
+                labelContainer.appendChild(label);
+                legendItem.appendChild(labelContainer);
+                legendItem.appendChild(valueContainer);
+                
+                container.appendChild(legendItem);
+            });
+            
+            // 如果有更多项，添加"显示更多"提示
+            if (items.length > maxItems) {
+                const moreItem = document.createElement('div');
+                moreItem.className = 'text-center text-xs text-gray-500 mt-2 italic';
+                moreItem.textContent = `还有 ${items.length - maxItems} 项未显示`;
+                container.appendChild(moreItem);
+            }
+        }
+        
+        // 更改数据视图类型
+        function changeDataView() {
+            currentViewType = dataViewSelect.value;
+            currentPage = 1; // 重置到第一页
+            filterAndSortData();
+        }
+        
+        // 过滤和排序数据
+        function filterAndSortData() {
+            if (!scanResults) return;
+            
+            const query = searchData.value.toLowerCase();
+            const sortBy = sortOption.value;
+            
+            // 获取当前视图类型的数据
+            let data = [];
+            switch (currentViewType) {
+                case 'fileTypes':
+                    data = [...scanResults.fileTypes];
+                    break;
+                case 'folders':
+                    data = [...scanResults.folders];
+                    break;
+                case 'applications':
+                    data = [...scanResults.applications];
+                    break;
+            }
+            
+            // 应用过滤
+            const filteredData = data.filter(item => 
+                item.name.toLowerCase().includes(query)
+            );
+            
+            // 应用排序
+            let sortedData;
+            switch (sortBy) {
+                case 'size-desc':
+                    sortedData = [...filteredData].sort((a, b) => b.size - a.size);
+                    break;
+                case 'size-asc':
+                    sortedData = [...filteredData].sort((a, b) => a.size - b.size);
+                    break;
+                case 'name-asc':
+                    sortedData = [...filteredData].sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    sortedData = [...filteredData].sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                default:
+                    sortedData = filteredData;
+            }
+            
+            // 渲染表格
+            renderDataTable(sortedData);
+        }
+        
+        // 更新数据表格
+        function updateDataTable() {
+            currentPage = 1;
+            filterAndSortData();
+        }
+        
+        // 渲染数据表格
+        function renderDataTable(data) {
+            const total = data.length;
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = Math.min(start + itemsPerPage, total);
+            const paginatedData = data.slice(start, end);
+            
+            // 更新分页信息
+            startItem.textContent = total > 0 ? start + 1 : 0;
+            endItem.textContent = end;
+            totalItems.textContent = total;
+            
+            // 更新分页按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = end >= total;
+            
+            // 清空表格
+            dataTableBody.innerHTML = '';
+            
+            if (paginatedData.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                        <i class="fa fa-search text-4xl mb-3 block opacity-30"></i>
+                        <p>没有找到匹配的数据</p>
+                    </td>
+                `;
+                dataTableBody.appendChild(emptyRow);
+                return;
+            }
+            
+            // 渲染数据行
+            paginatedData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                
+                // 计算百分比
+                const percentage = scanResults.totalSize > 0 ? 
+                    Math.round((item.size / scanResults.totalSize) * 100) : 0;
+                
+                // 根据当前视图类型显示不同的列
+                let fileCountHtml = '<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>';
+                if (currentViewType === 'fileTypes' && item.count !== undefined) {
+                    fileCountHtml = `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.count.toLocaleString()}</td>`;
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <i class="fa ${getIconForItem(item)} mr-3"></i>
+                            <div class="text-sm font-medium text-gray-900 truncate max-w-xs" title="${item.name}">${item.name}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">${formatBytes(item.size)}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-full bg-gray-200 rounded-full h-2 mr-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-500 whitespace-nowrap">${percentage}%</span>
+                        </div>
+                    </td>
+                    ${fileCountHtml}
+                `;
+                
+                dataTableBody.appendChild(row);
+            });
+        }
+        
+        // 获取项目对应的图标
+        function getIconForItem(item) {
+            switch (currentViewType) {
+                case 'fileTypes':
+                    if (item.extension) {
+                        const ext = item.extension.toLowerCase();
+                        if (['jpg', 'jpeg', 'png', 'gif', 'bmp'].includes(ext)) {
+                            return 'fa-file-image-o text-primary';
+                        } else if (['mp3', 'wav', 'flac'].includes(ext)) {
+                            return 'fa-file-audio-o text-secondary';
+                        } else if (['mp4', 'avi', 'mkv', 'mov'].includes(ext)) {
+                            return 'fa-file-video-o text-accent';
+                        } else if (['doc', 'docx'].includes(ext)) {
+                            return 'fa-file-word-o text-blue-600';
+                        } else if (['xls', 'xlsx'].includes(ext)) {
+                            return 'fa-file-excel-o text-green-600';
+                        } else if (['ppt', 'pptx'].includes(ext)) {
+                            return 'fa-file-powerpoint-o text-red-600';
+                        } else if (['pdf'].includes(ext)) {
+                            return 'fa-file-pdf-o text-danger';
+                        } else if (['zip', 'rar', '7z'].includes(ext)) {
+                            return 'fa-file-archive-o text-yellow-600';
+                        } else if (['exe'].includes(ext)) {
+                            return 'fa-file-exe-o text-red-500';
+                        } else if (['txt', 'md'].includes(ext)) {
+                            return 'fa-file-text-o text-gray-500';
+                        } else if (['js', 'css', 'html', 'php', 'py', 'java', 'c', 'cpp'].includes(ext)) {
+                            return 'fa-file-code-o text-purple-600';
+                        }
+                    }
+                    return 'fa-file-o text-gray-400';
+                case 'folders':
+                    return 'fa-folder text-yellow-500';
+                case 'applications':
+                    return 'fa-cube text-blue-500';
+                default:
+                    return 'fa-file-o text-gray-400';
+            }
+        }
+        
+        // 翻页功能
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                filterAndSortData();
+            }
+        }
+        
+        function goToNextPage() {
+            const query = searchData.value.toLowerCase();
+            let data = [];
+            
+            // 获取当前视图类型的数据
+            switch (currentViewType) {
+                case 'fileTypes':
+                    data = scanResults.fileTypes;
+                    break;
+                case 'folders':
+                    data = scanResults.folders;
+                    break;
+                case 'applications':
+                    data = scanResults.applications;
+                    break;
+            }
+            
+            // 应用过滤
+            const filteredData = data.filter(item => 
+                item.name.toLowerCase().includes(query)
+            );
+            
+            const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                filterAndSortData();
+            }
+        }
+        
+        // 格式化字节数
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+        
+        // 切换主题
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            
+            if (isDark) {
+                themeToggle.innerHTML = '<i class="fa fa-sun-o text-yellow-400 text-xl transition-all duration-300 pulse-animation"></i>';
+                document.body.classList.remove('bg-gradient-to-br', 'from-light', 'to-white');
+                document.body.classList.add('dark-mode');
+                
+                // 更新导航栏样式
+                document.querySelector('header').classList.add('nav-glass');
+                
+                // 更新图表卡片样式
+                document.querySelectorAll('#apps-chart-card, #types-chart-card, #folders-chart-card, #code-lang-chart-card').forEach(el => {
+                    el.classList.add('glass-card');
+                });
+                
+                // 更新按钮样式
+                document.querySelectorAll('#scan-button').forEach(el => {
+                    el.classList.add('btn-primary');
+                });
+                document.querySelectorAll('#stop-button').forEach(el => {
+                    el.classList.add('btn-danger');
+                });
+                
+                // 更新进度条样式
+                document.querySelector('#scan-progress-bar').classList.add('progress-glow');
+                document.querySelector('#scan-percentage').classList.add('text-glow');
+                
+                // 保存主题偏好
+                localStorage.setItem('theme', 'dark');
+            } else {
+                themeToggle.innerHTML = '<i class="fa fa-moon-o text-dark text-xl transition-all duration-300"></i>';
+                document.body.classList.remove('dark-mode');
+                document.body.classList.add('bg-gradient-to-br', 'from-light', 'to-white');
+                
+                // 恢复导航栏样式
+                document.querySelector('header').classList.remove('nav-glass');
+                
+                // 恢复图表卡片样式
+                document.querySelectorAll('#apps-chart-card, #types-chart-card, #folders-chart-card, #code-lang-chart-card').forEach(el => {
+                    el.classList.remove('glass-card');
+                });
+                
+                // 恢复按钮样式
+                document.querySelectorAll('#scan-button').forEach(el => {
+                    el.classList.remove('btn-primary');
+                });
+                document.querySelectorAll('#stop-button').forEach(el => {
+                    el.classList.remove('btn-danger');
+                });
+                
+                // 恢复进度条样式
+                document.querySelector('#scan-progress-bar').classList.remove('progress-glow');
+                document.querySelector('#scan-percentage').classList.remove('text-glow');
+                
+                // 保存主题偏好
+                localStorage.setItem('theme', 'light');
+            }
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
